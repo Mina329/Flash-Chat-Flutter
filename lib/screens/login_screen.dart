@@ -1,6 +1,8 @@
 import 'package:flash_chat/constants.dart';
+import 'package:flash_chat/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flash_chat/components/Button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   static String id = 'Login';
@@ -9,6 +11,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  late String email;
+  late String pass;
+  final _auth = FirebaseAuth.instance;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
                 keyboardType: TextInputType.emailAddress,
                 onChanged: (value) {
-                  //Do something with the user input.
+                  email =value;
                 },
                 decoration: kTextFieldDecoration.copyWith(
                     hintText: 'Enter Your Email')),
@@ -44,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: true,
                 textAlign: TextAlign.center,
                 onChanged: (value) {
-                  //Do something with the user input.
+                  pass = value;
                 },
                 decoration: kTextFieldDecoration.copyWith(
                     hintText: 'Enter Your Password')),
@@ -53,9 +58,17 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             ReusableButton(
                 ButtonColor: Colors.lightBlueAccent,
-                onPressed: () {
-                  // implement Log In
-                },
+                onPressed: () async {
+                  try {
+                    final User = await _auth.signInWithEmailAndPassword(
+                        email: email, password: pass);
+                    if(User != null){
+                      Navigator.pushNamed(context, ChatScreen.id);
+                    }
+                  }catch(e){
+
+                  }
+                  },
                 title: 'Log In'),
           ],
         ),
