@@ -14,21 +14,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final _firestore = FirebaseFirestore.instance.collection('messages');
   late String Message;
   late User logged;
+  var _clear = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     getCurrentUser();
-    getMessages();
-  }
-
-  void getMessages() async {
-    _firestore.snapshots().listen((event) {
-      event.docs.forEach((element) {
-        print(element.data());
-        print('---------------------------------');
-      });
-    });
   }
 
   void getCurrentUser() {
@@ -36,9 +27,21 @@ class _ChatScreenState extends State<ChatScreen> {
       final user = _auth.currentUser;
       if (user != null) {
         logged = user;
-        print(logged.email);
       }
     } catch (e) {}
+  }
+
+  bool isMe(String email) {
+    getCurrentUser();
+    if (logged != null) {
+      if (logged.email == email) {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
   }
 
   @override
@@ -63,7 +66,7 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             StreamBuilder<QuerySnapshot>(
-              stream: _firestore.snapshots(),
+              stream: _firestore.orderBy('time').snapshots(),
               builder: (context, snashot) {
                 if (snashot.hasError) {
                   return Text('Error');
@@ -74,21 +77,51 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (snashot.hasData) {
                   return Expanded(
                     child: ListView.builder(
+                        reverse: true,
                         itemCount: snashot.data!.docs.length,
                         itemBuilder: (context, i) {
+                          int reverseIndex = snashot.data!.docs.length - 1 - i ;
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0,horizontal: 20.0),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10.0, horizontal: 20.0),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  isMe(snashot.data!.docs[reverseIndex]['email'])
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
                               children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    '${snashot.data!.docs[reverseIndex]['email']}',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                ),
                                 Material(
-                                  borderRadius: BorderRadius.circular(30.0),
+                                  borderRadius: isMe(
+                                          snashot.data!.docs[reverseIndex]['email'])
+                                      ? BorderRadius.only(
+                                          bottomLeft: Radius.circular(30.0),
+                                          bottomRight: Radius.circular(30.0),
+                                          topLeft: Radius.circular(30.0))
+                                      : BorderRadius.only(
+                                          bottomLeft: Radius.circular(30.0),
+                                          bottomRight: Radius.circular(30.0),
+                                          topRight: Radius.circular(30.0)),
                                   elevation: 5.0,
-                                  color: Colors.lightBlueAccent,
+                                  color: isMe(snashot.data!.docs[reverseIndex]['email'])
+                                      ? Colors.lightBlueAccent
+                                      : Colors.white,
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
                                     child: Text(
-                                        '${snashot.data!.docs[i]['email']} : ${snashot.data!.docs[i]['text']}',),
+                                      '${snashot.data!.docs[reverseIndex]['text']}',
+                                      style: TextStyle(
+                                          color: isMe(snashot.data!.docs[reverseIndex]
+                                                  ['email'])
+                                              ? Colors.white
+                                              : Colors.black45),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -107,15 +140,21 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: <Widget>[
                   Expanded(
                     child: TextField(
+                      controller: _clear,
                       onChanged: (value) {
                         Message = value;
                       },
                       decoration: kMessageTextFieldDecoration,
                     ),
                   ),
-                  FlatButton(
+                  TextButton(
                     onPressed: () {
-                      _firestore.add({'text': Message, 'email': logged.email});
+                      _firestore.add({
+                        'text': Message,
+                        'email': logged.email,
+                        'time': FieldValue.serverTimestamp()
+                      });
+                      _clear.clear();
                     },
                     child: Text(
                       'Send',
